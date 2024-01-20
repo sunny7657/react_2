@@ -1,7 +1,16 @@
 import { Component } from 'react';
 
 import * as ImageService from 'service/image-service';
-import { Button, SearchForm, Grid, GridItem, Text, CardItem } from 'components';
+import {
+  Button,
+  SearchForm,
+  Grid,
+  GridItem,
+  Text,
+  CardItem,
+  Loader,
+  Modal,
+} from 'components';
 
 export class Gallery extends Component {
   state = {
@@ -11,11 +20,14 @@ export class Gallery extends Component {
     isLoadMore: false,
     isEmpty: false,
     isError: null,
+    isLoading: false,
+    largeImg: '',
   };
 
   componentDidUpdate(_, prevState) {
     const { value, page } = this.state;
     if (prevState.value !== value || prevState.page !== page) {
+      this.setState({ isLoading: true });
       ImageService.getPhotos(value, page)
         .then(({ photos, total_results }) => {
           if (!photos.length) {
@@ -27,7 +39,8 @@ export class Gallery extends Component {
             isLoadMore: page < Math.ceil(total_results / 15),
           }));
         })
-        .catch(error => this.setState({ isError: error.message }));
+        .catch(error => this.setState({ isError: error.message }))
+        .finally(() => this.setState({ isLoading: false }));
     }
   }
 
@@ -41,11 +54,18 @@ export class Gallery extends Component {
       isError: null,
     });
   };
+
   handleLoadMore = () => {
     this.setState(prevState => ({ page: prevState.page + 1 }));
   };
+
+  handelImgClick = largeImg => {
+    this.setState({ largeImg });
+  };
+
   render() {
-    const { images, isLoadMore, isEmpty, isError } = this.state;
+    const { images, isLoadMore, isEmpty, isError, isLoading, largeImg } =
+      this.state;
     return (
       <>
         <SearchForm onSubmit={this.onSubmit} />
@@ -53,7 +73,11 @@ export class Gallery extends Component {
           {images.map(image => (
             <GridItem key={image.id}>
               <CardItem color={image.avg_color}>
-                <img src={image.src.small} alt={image.alt} />
+                <img
+                  src={image.src.small}
+                  alt={image.alt}
+                  onClick={() => this.handelImgClick(image.src.large)}
+                />
               </CardItem>
             </GridItem>
           ))}
@@ -63,6 +87,12 @@ export class Gallery extends Component {
           <Text textAlign="center">Sorry. There are no images ... 😭</Text>
         )}
         {isError && <Text textAlign="center">Sorry. {isError} 😭</Text>}
+        {isLoading && <Loader />}
+        {largeImg && (
+          <Modal hideModal={this.handelImgClick}>
+            <img src={largeImg} alt="Modal Img" />
+          </Modal>
+        )}
       </>
     );
   }
